@@ -1,14 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, status
-from . import schemas, models
-from .database import engine, SessionLocal, get_db
-from sqlalchemy.orm import Session
-from .hashing import Hash
-from .routers import blog, user
- 
+from fastapi import FastAPI
+from . import  models
+from .database import engine
+from  .routers import blog, user
+
 app = FastAPI()
 
 models.Base.metadata.create_all(engine)
 
 app.include_router(blog.router)
-
 app.include_router(user.router)

@@ -1,56 +1,35 @@
-from fastapi import APIRouter, HTTPException, Depends, status
 from typing import List
-from .. import schemas, models, database
+from fastapi import APIRouter,Depends,status,HTTPException
+from .. import schemas, database, models, oauth2
 from sqlalchemy.orm import Session
-
+from ..repository import blog
 
 router = APIRouter(
-        prefix= "/blog",
-        tags=["Blogs"]
-    )
+    prefix="/blog",
+    tags=['Blogs']
+)
 
-# Crete a blog
-@router.post("/", status_code=status.HTTP_201_CREATED)
-def create_blog(request: schemas.Blog, db : Session = Depends(database.get_db)):
-    new_blog = models.Blog(title = request.title, body = request.body)
-    db.add(new_blog)
-    db.commit()
-    db.refresh(new_blog)
-    return new_blog
+get_db = database.get_db
+
+@router.get('/', response_model=List[schemas.ShowBlog])
+def all(db: Session = Depends(get_db),current_user: schemas.User = Depends(oauth2.get_current_user)):
+    return blog.get_all(db)
 
 
-# Get all Blogs
-@router.get("/", response_model=List[schemas.Blog])
-def get_all_blog(db: Session = Depends(database.get_db)):
-    blogs= db.query(models.Blog).all()
-    return blogs
+@router.post('/', status_code=status.HTTP_201_CREATED,)
+def create(request: schemas.Blog, db: Session = Depends(get_db),current_user: schemas.User = Depends(oauth2.get_current_user)):
+    return blog.create(request, db)
+
+@router.delete('/{id}', status_code=status.HTTP_204_NO_CONTENT)
+def destroy(id:int, db: Session = Depends(get_db),current_user: schemas.User = Depends(oauth2.get_current_user)):
+    return blog.destroy(id,db)
 
 
-# Get blog with id using path parameter
-@router.get("/{id}")
-def get_blog_with_id(id : int, db : Session = Depends(database.get_db)):
-    blog = db.query(models.Blog).filter(models.Blog.id == id).first()
-    return blog
+@router.put('/{id}', status_code=status.HTTP_202_ACCEPTED)
+def update(id:int, request: schemas.Blog, db: Session = Depends(get_db),current_user: schemas.User = Depends(oauth2.get_current_user)):
+    return blog.update(id,request, db)
 
 
-# Delete blog with id using path parameter
-@router.delete("/{id}", status_code= status.HTTP_204_NO_CONTENT)
-def delete_blog_with_id(id:int, db:Session = Depends(database.get_db)):
-    blog = db.query(models.Blog).filter(models.Blog.id == id).first()
-    if not blog:
-        raise HTTPException(status_code=404, detail = 'Blog not found.')
-    db.delete(blog)
-    db.commit()
-    return {"message": "Blog deleted successfully"}
-
-
-# Update blog with id using path parameter
-@router.put("/{id}", status_code=status.HTTP_202_ACCEPTED)
-def update_blog_with_id(id: int, updated_blog: schemas.Blog, db:Session = Depends(database.get_db)):
-    blog = db.query(models.Blog).filter(models.Blog.id == id).first()
-    if not blog:
-        raise HTTPException(status_code=404, detail = 'Blog not found.')
-    blog.title = updated_blog.title
-    blog.body = updated_blog.body
-    db.commit()
-    return blog
+@router.get('/{id}', status_code=200, response_model=schemas.ShowBlog)
+def show(id:int, db: Session = Depends(get_db),current_user: schemas.User = Depends(oauth2.get_current_user)):
+    return blog.show(id,db)
